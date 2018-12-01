@@ -1,0 +1,12 @@
+// user.proto
+package user;
+syntax = "proto3";
+
+message UserMessage {
+    string name = 1;
+    float age = 2;
+}
+
+message UsersMessage {
+  repeated UserMessage users = 1;
+}
