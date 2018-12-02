@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
 
 import { HttpBackend, HttpRequest, HttpEvent, HttpResponse } from '@angular/common/http';
-import { Observable, from } from 'rxjs';
-import { switchMap } from 'rxjs/operators';
+import { Observable, from, empty } from 'rxjs';
+import { switchMap, catchError } from 'rxjs/operators';
 
 declare const TextDecoder;
 
@@ -16,15 +16,22 @@ export class FetchBackend implements HttpBackend {
       method: req.method,
       headers: req.headers.keys().reduce((acc, key) => { acc[key] = req.headers.get(key); return acc; }, {}),
       body: req.body ? JSON.stringify(req.body) : undefined
+    }).then(response => {
+      if (response.ok) { return response; }
+      throw new Error('Network error!');
     });
-
     return from(fetchPromise).pipe(
-      switchMap(this.processChunkedResponse)
+      switchMap(this.processChunkedResponse),
+      catchError((err, caught) => {
+        console.error(err);
+        // return caught;
+        return empty();
+      })
     );
   }
 
-  private processChunkedResponse(response): Observable<HttpEvent<any>> {
-    const headers = [...response.headers.entries()].reduce((acc, [key, value]) => {
+  private processChunkedResponse(response: Response): Observable<HttpEvent<any>> {
+    const headers = [...(response.headers as any).entries()].reduce((acc, [key, value]) => {
       acc[key] = value;
       return acc;
     }, {});
@@ -49,7 +56,7 @@ export class FetchBackend implements HttpBackend {
           text = splittedText[1];
           observer.next(new HttpResponse({
             body: apiResponseType === 'json' ? JSON.parse(message) : message,
-            headers: response.headers,
+            headers: headers,
             status: response.status,
             statusText: response.statusText,
             url: response.url,
@@ -74,7 +81,10 @@ export class FetchBackend implements HttpBackend {
         }
       }
 
-      readChunk();
+      readChunk().catch(err => {
+        // set interval to reconnect!
+        console.error(err);
+      });
       return () => {
         console.log('Cleanup');
       };

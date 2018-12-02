@@ -41,7 +41,9 @@ export function findAndExecuteHandlers(router: Router, method: Method, pathname:
     const route = router[method][match.index] as IRouteData;
     const handersIterator: Iterator<RouteHandler> = route.handlers[Symbol.iterator]();
 
-    execNextHandler(handersIterator, route, queryParams, match, stream, {}, () => { resolve(true); });
+    execNextHandler(handersIterator, route, queryParams, match, stream, {}, () => {
+      resolve(true);
+    });
   });
 }
 

@@ -30,24 +30,36 @@ export const jsonBodyParser: RouteHandler = (routeData, next) => {
   });
 };
 
-export function protobufBodyParser(protos: { [name: string]: string }, protoFolderPath?: string) {
+export function protobufParsers(protos: { [name: string]: string }, protoFolderPath?: string) {
   const rootsByName: { [name: string]: protobuf.Root } = {};
   for (let [key, file] of Object.entries(protos)) {
     const location = path.join(protoFolderPath || '', file);
     const root = protobuf.loadSync(location);
     rootsByName[key] = root;
   }
-  return function (name: string, namespace: string, message: string): RouteHandler {
-    return (routeData, next) => {
-      collectData(routeData.stream, (err, buffer) => {
-        if (err) { next(err); return; }
+  return function (name: string, namespace: string, message: string, extractor?: Function): { receiver: RouteHandler, sender: RouteHandler } {
+    return {
+      receiver: (routeData, next) => {
+        collectData(routeData.stream, (err, buffer) => {
+          if (err) { next(err); return; }
+          const protoMessage = rootsByName[name].lookupType(`${namespace}.${message}`);
+          try {
+            routeData.data = { ...routeData.data, body: protoMessage.decode(buffer) };
+          } catch (err) {
+            next(err);
+          }
+        });
+      },
+      sender: ({ data, stream }, next) => {
         const protoMessage = rootsByName[name].lookupType(`${namespace}.${message}`);
-        try {
-          routeData.data = { ...routeData.data, body: protoMessage.decode(buffer) };
-        } catch (err) {
-          next(err);
-        }
-      });
-    };
+        let responseData = data;
+        if (extractor) { responseData = extractor(data); }
+        const errMessage = protoMessage.verify(responseData);
+        if (errMessage) { next(Error(errMessage)); return; }
+        const responseMessage = protoMessage.fromObject(responseData);
+        const responseBuffer = protoMessage.encode(responseMessage).finish();
+        stream.write(responseBuffer);
+      }
+    }
   }
 }
