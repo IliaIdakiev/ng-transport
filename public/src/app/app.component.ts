@@ -1,6 +1,6 @@
 import { Component, ViewChild, ElementRef } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { FetchClient } from './fetch-client/fetch-client';
 
 @Component({
   selector: 'hns-root',
@@ -13,7 +13,7 @@ export class AppComponent {
   @ViewChild('userAge') userAge: ElementRef;
   users$: Observable<{ name: string, age: number }[]>;
 
-  constructor(public http: HttpClient) {
+  constructor(public http: FetchClient) {
     this.users$ = http.get<{ name: string, age: number }[]>('/api/users');
   }
 

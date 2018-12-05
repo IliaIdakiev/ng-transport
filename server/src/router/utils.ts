@@ -97,16 +97,17 @@ export function processServerPush(pushData: IServerPushCollection, pathname: str
     pushDataForRoute.pushData.forEach(assetPath => {
       let fullAssetPath = assetPath;
       if (useStaticForPush) { fullAssetPath = path.join(staticFolderPath, assetPath); }
-      if (!stream.aborted) {
-        try {
-          const readStream = fs.createReadStream(fullAssetPath);
-          console.log(`Server Push: ${pushDataForRoute.path}${assetPath}`);
-          stream.pushStream({ ':path': `${pushDataForRoute.path}${assetPath}` }, (pushStream: any) => {
-            readStream.pipe(pushStream);
-          });
-        } catch (err) {
+      if (!stream.aborted && !stream.closed) {
+
+        const readStream = fs.createReadStream(fullAssetPath);
+        readStream.on('error', function (err) {
           console.error(err);
-        }
+        })
+        console.log(`Server Push: ${pushDataForRoute.path}${assetPath}`);
+        stream.pushStream({ ':path': `${pushDataForRoute.path}${assetPath}` }, (err, pushStream) => {
+          if (err) { console.error(err); return; }
+          readStream.pipe(pushStream);
+        });
       }
     });
   }

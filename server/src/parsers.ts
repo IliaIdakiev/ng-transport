@@ -57,8 +57,13 @@ export function protobufParsers(protos: { [name: string]: string }, protoFolderP
         const errMessage = protoMessage.verify(responseData);
         if (errMessage) { next(Error(errMessage)); return; }
         const responseMessage = protoMessage.fromObject(responseData);
-        const responseBuffer = protoMessage.encode(responseMessage).finish();
+        const responseBuffer = protoMessage.encodeDelimited(responseMessage).finish();
         stream.write(responseBuffer);
+        stream.write(responseBuffer.slice(0, 21));
+        setTimeout(function () {
+          debugger;
+          stream.write(responseBuffer.slice(21));
+        }, 5000);
       }
     }
   }

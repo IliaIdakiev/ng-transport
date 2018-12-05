@@ -1,8 +1,8 @@
 import { BrowserModule } from '@angular/platform-browser';
 import { NgModule } from '@angular/core';
 import { AppComponent } from './app.component';
-import { HttpClientModule, HttpBackend } from '@angular/common/http';
-import { FetchBackend } from './fetch.backend';
+import { FetchClientModule } from './fetch-client/fetch-client.module';
+// import { HttpClientModule, HttpBackend } from '@angular/common/http';
 
 @NgModule({
   declarations: [
@@ -10,13 +10,7 @@ import { FetchBackend } from './fetch.backend';
   ],
   imports: [
     BrowserModule,
-    HttpClientModule
-  ],
-  providers: [
-    {
-      provide: HttpBackend,
-      useClass: FetchBackend
-    }
+    FetchClientModule
   ],
   bootstrap: [AppComponent]
 })

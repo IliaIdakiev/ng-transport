@@ -57,17 +57,27 @@ router.post('/api/users', jsonBodyParser, function ({ stream, data }, next, noti
   }, 2000);
 });
 
-router.subscribe('/api/users', function ({ stream, data }) {
+const { sender: userSender } = protobufParser('user', 'user', 'UsersMessage');
+
+router.subscribe('/api/users', function (routeData, next, notifier) {
+  const { stream, data, queryParams } = routeData;
+  const isProtobufSelected = queryParams.responseType !== 'protobuf';
+  const contentType = isProtobufSelected ? 'application/json' : 'application/octet-stream';
   if (!stream.headersSent) {
     stream.setTimeout(0);
     stream.respond({
-      'api-response-type': 'json',
+      'content-type': contentType,
       'connnection': 'keep-alive',
       ':status': 200
     });
   }
-  stream.write(JSON.stringify(users));
-  stream.write('<[SEPARATOR]>');
+  if (isProtobufSelected) {
+    userSender({ ...routeData, data: { users } }, next, notifier);
+    return;
+  }
+  const message = Buffer.from(JSON.stringify(users), 'utf8');
+  stream.write(message);
+  stream.write(Buffer.from('\n'));
 });
 
 router.get('/protos/:name', function ({ stream, params }) {
@@ -79,7 +89,7 @@ router.get('/protos/:name', function ({ stream, params }) {
   fs.createReadStream(path.join(protoPath, params.name)).pipe(stream);
 });
 
-router.get('/', delay, function ({ stream }) {
+router.get('/', function ({ stream }) {
   stream.respond({
     'content-type': 'text/html',
     ':status': 200
