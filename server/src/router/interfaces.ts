@@ -18,6 +18,9 @@ export interface IRouteData {
 export interface ISubscriptionData extends IRouteData {
   streams: {
     [key: number]: http2.ServerHttp2Stream;
+  },
+  requestData: {
+    [key: number]: any
   }
 }
 
@@ -25,12 +28,12 @@ export interface IServerPushCollection {
   [key: string]: {
     path: string;
     regExp: RegExp;
-    pushData: string[];
+    pushData: (string | { path: string, fullPath: boolean, responsePath: string })[];
   };
 }
 
 export interface IPushConfig {
-  [path: string]: string[];
+  [path: string]: (string | { path: string, fullPath: boolean, responsePath: string })[];
 }
 
 export interface IRouterConfig {

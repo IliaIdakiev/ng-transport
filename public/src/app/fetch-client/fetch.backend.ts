@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, Inject } from '@angular/core';
 
 import { HttpBackend, HttpRequest, HttpEvent, HttpResponse, HttpHeaders } from '@angular/common/http';
 import { Observable, from as observableFrom, empty as observableEmpty } from 'rxjs';
@@ -7,9 +7,12 @@ import { switchMap, catchError } from 'rxjs/operators';
 declare const TextDecoder;
 
 import { load, Reader } from 'protobufjs';
+import { PROTO_BUFFER_URL } from './injection-tokens';
 
 @Injectable()
 export class FetchBackend implements HttpBackend {
+
+  constructor(@Inject(PROTO_BUFFER_URL) private protoBufsUrl: string) { }
 
   private prepareFetchHeaders(headers: HttpHeaders) {
     return headers.keys().reduce((acc, key) => {
@@ -40,7 +43,13 @@ export class FetchBackend implements HttpBackend {
     });
 
     return observableFrom(fetchPromise).pipe(
-      switchMap(this.getResponseProcessor(abortController)),
+      switchMap((response) => {
+        const responseHeaders = this.getResponseHeaders(response);
+        if (['application/json', 'application/octet-stream'].includes(responseHeaders['content-type'])) {
+          return this.getResponseProcessor(abortController)(response);
+        }
+        return response.text();
+      }),
       catchError((err, caught) => {
         console.error(err);
         return observableEmpty();
@@ -48,33 +57,31 @@ export class FetchBackend implements HttpBackend {
     );
   }
 
-  private getDecoder(responseHeaders: { [key: string]: any }) {
-    const contentType = responseHeaders['content-type'];
-    // construct decoder for response type
-    return new TextDecoder();
+  private getDecoder(type: string, protoFile: string, protoMessage: string) {
+    if (type === 'json') { return new TextDecoder(); }
+    return load(`${this.protoBufsUrl}${protoFile}`).then(root => root.lookupType(protoMessage));
   }
 
   private protobufProcessor = (decoder, partialContent, emitter) => {
-    return load('/protos/user.proto').then(root => {
-      const msg = root.lookupType('user.UsersMessage');
+    return decoder.then(dec => {
       const msgReader = Reader.create(partialContent);
-      let shouldRead = true;
-      // const result = [];
-      while (shouldRead) {
+      let shouldDecode = true;
+      let error = null;
+      while (shouldDecode) {
         try {
-          const message = msg.decodeDelimited(msgReader);
+          const message = dec.decodeDelimited(msgReader);
           partialContent = partialContent.slice(msgReader.pos);
           emitter(partialContent, (message as any).users);
           if (partialContent.length !== 0) { continue; }
           partialContent = new Uint8Array();
-          shouldRead = false;
+          shouldDecode = false;
         } catch (e) {
-          shouldRead = false;
+          if (!e.message.includes('index out of range')) { error = e; }
+          shouldDecode = false;
+        } finally {
+          if (error) { throw error; }
         }
       }
-
-      // emitter(partialContent, result);
-      // return read().then(readHandler);
     });
   }
 
@@ -86,8 +93,9 @@ export class FetchBackend implements HttpBackend {
       const message = decoder.decode(partialContent.slice(0, delimiterIndex));
       partialContent = partialContent.slice(delimiterIndex + 1);
 
-      return emitter(partialContent, JSON.parse(message));
+      emitter(partialContent, JSON.parse(message));
     }
+    return Promise.resolve();
   }
 
   private constructResponse = (response, headers, body) => {
@@ -100,13 +108,19 @@ export class FetchBackend implements HttpBackend {
     });
   }
 
+
   private getResponseProcessor = (abortController: AbortController) => {
     return (response: Response) => {
       const headers = this.getResponseHeaders(response);
-      const decoder = this.getDecoder(headers);
+      const isJSONResponse = headers['content-type'] === 'application/json';
+      const { type, processor } = isJSONResponse ?
+        { type: 'json', processor: this.jsonProcessor } : { type: 'protobuf', processor: this.protobufProcessor };
+
+      const decoder = this.getDecoder(type, headers['proto-file'], headers['proto-message']);
 
       const reader = response.body.getReader();
       const read = () => reader.read();
+      const constructResponse = this.constructResponse;
       let partialContent = new Uint8Array();
 
       return new Observable<any>(observer => {
@@ -117,14 +131,11 @@ export class FetchBackend implements HttpBackend {
           partialContent.set(currentContent);
           partialContent.set(value, currentContent.length);
 
-          const isJSONResponse = headers['content-type'] !== 'application/json';
-          const processor = isJSONResponse ? this.jsonProcessor : this.protobufProcessor;
-
           processor(decoder, partialContent, (newPartialContent, message) => {
             partialContent = newPartialContent;
-            observer.next(this.constructResponse(response, headers, message));
+            observer.next(constructResponse(response, headers, message));
           }).then(read).then(readHandler);
-        }.bind(this));
+        });
 
         return () => {
           abortController.abort();

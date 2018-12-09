@@ -56,13 +56,16 @@ export function findAndExecuteSubscriptions(subscriptions: RouteCollection<ISubs
     if (method === Method.GET) {
       const streamId = (stream as any).id;
       subscriptionRoute.streams[streamId] = stream;
+      subscriptionRoute.requestData[streamId] = { queryParams };
       stream.on('aborted', () => {
         const { [streamId]: currentStream, ...others } = subscriptionRoute.streams as any;
         subscriptionRoute.streams = { ...others };
       });
     }
 
-    Object.values(subscriptionRoute.streams).forEach(subStream => {
+    Object.keys(subscriptionRoute.streams).forEach(streamId => {
+      const subStream = subscriptionRoute.streams[+streamId];
+      const { queryParams } = subscriptionRoute.requestData[+streamId];
       const subscriptionsIterator: Iterator<RouteHandler> = subscriptionRoute.handlers[Symbol.iterator]();
 
       execNextHandler(subscriptionsIterator, subscriptionRoute, queryParams, subscriptionMatch, subStream, {});
@@ -95,18 +98,22 @@ export function processServerPush(pushData: IServerPushCollection, pathname: str
   const pushDataForRoute = Object.values(pushData).find(({ regExp }) => !!regExp.exec(pathname));
   if (pushDataForRoute) {
     pushDataForRoute.pushData.forEach(assetPath => {
-      let fullAssetPath = assetPath;
-      if (useStaticForPush) { fullAssetPath = path.join(staticFolderPath, assetPath); }
+      let fullAssetPath = typeof assetPath === 'string' ? assetPath : assetPath.path;
+      if (useStaticForPush && !(assetPath as any)['fullPath']) { fullAssetPath = path.join(staticFolderPath, fullAssetPath); }
       if (!stream.aborted && !stream.closed) {
-
         const readStream = fs.createReadStream(fullAssetPath);
         readStream.on('error', function (err) {
           console.error(err);
-        })
-        console.log(`Server Push: ${pushDataForRoute.path}${assetPath}`);
-        stream.pushStream({ ':path': `${pushDataForRoute.path}${assetPath}` }, (err, pushStream) => {
+        });
+        const responsePath = typeof assetPath === 'string' ? `${pushDataForRoute.path}${assetPath}` : assetPath.responsePath;
+        console.log(`Server Push: ${responsePath}`);
+        stream.pushStream({ ':path': responsePath }, (err, pushStream) => {
           if (err) { console.error(err); return; }
           readStream.pipe(pushStream);
+          pushStream.on('error', (err) => {
+            const isRefusedStream = err.message === 'Stream closed with error code NGHTTP2_REFUSED_STREAM';
+            if (!isRefusedStream) { throw err; }
+          });
         });
       }
     });
@@ -117,5 +124,5 @@ export function constructServerPushCollection(push: IPushConfig) {
   return Object.keys(push).reduce((acc, curr) => {
     acc[curr] = { path: curr, regExp: pathToRegexp(curr), pushData: push[curr] };
     return acc;
-  }, {} as { [key: string]: { path: string, regExp: RegExp, pushData: string[] } })
+  }, {} as { [key: string]: { path: string, regExp: RegExp, pushData: (string | { path: string, fullPath: boolean, responsePath: string })[] } })
 }

@@ -61,7 +61,6 @@ export function protobufParsers(protos: { [name: string]: string }, protoFolderP
         stream.write(responseBuffer);
         stream.write(responseBuffer.slice(0, 21));
         setTimeout(function () {
-          debugger;
           stream.write(responseBuffer.slice(21));
         }, 5000);
       }

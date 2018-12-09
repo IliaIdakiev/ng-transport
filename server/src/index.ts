@@ -35,7 +35,18 @@ const router = connect(server, {
   staticPath: '/',
   useStaticForPush: true,
   push: {
-    '/': ['main.js', 'polyfills.js', 'runtime.js', 'styles.js', 'vendor.js']
+    '/': [
+      'main.js',
+      'polyfills.js',
+      'runtime.js',
+      'styles.js',
+      'vendor.js',
+      {
+        path: '/Users/iliaidakiev/Documents/dev/ng_custom_transport/server/protos/user.proto',
+        fullPath: true,
+        responsePath: '/protos/user.proto'
+      }
+    ]
   }
 });
 
@@ -61,12 +72,14 @@ const { sender: userSender } = protobufParser('user', 'user', 'UsersMessage');
 
 router.subscribe('/api/users', function (routeData, next, notifier) {
   const { stream, data, queryParams } = routeData;
-  const isProtobufSelected = queryParams.responseType !== 'protobuf';
-  const contentType = isProtobufSelected ? 'application/json' : 'application/octet-stream';
+  const isProtobufSelected = queryParams.type === 'protobuf';
+  const contentType = !isProtobufSelected ? 'application/json' : 'application/octet-stream';
   if (!stream.headersSent) {
     stream.setTimeout(0);
     stream.respond({
       'content-type': contentType,
+      'proto-file': isProtobufSelected ? 'user.proto' : '',
+      'proto-message': isProtobufSelected ? 'user.UsersMessage' : '',
       'connnection': 'keep-alive',
       ':status': 200
     });
