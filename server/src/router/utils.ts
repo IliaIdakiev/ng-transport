@@ -108,7 +108,10 @@ export function processServerPush(pushData: IServerPushCollection, pathname: str
         const responsePath = typeof assetPath === 'string' ? `${pushDataForRoute.path}${assetPath}` : assetPath.responsePath;
         console.log(`Server Push: ${responsePath}`);
         stream.pushStream({ ':path': responsePath }, (err, pushStream) => {
-          if (err) { console.error(err); return; }
+          if (err) {
+            if (err instanceof Error) { console.error(err); return; }
+            pushStream = err as http2.ServerHttp2Stream;
+          }
           readStream.pipe(pushStream);
           pushStream.on('error', (err) => {
             const isRefusedStream = err.message === 'Stream closed with error code NGHTTP2_REFUSED_STREAM';
