@@ -16,12 +16,8 @@ export interface IRouteData {
 }
 
 export interface ISubscriptionData extends IRouteData {
-  streams: {
-    [key: number]: http2.ServerHttp2Stream;
-  },
-  requestData: {
-    [key: number]: any
-  }
+  streams: Set<http2.ServerHttp2Stream>,
+  requestData: Map<http2.ServerHttp2Stream, any>;
 }
 
 export interface IServerPushCollection {

@@ -47,6 +47,8 @@ export function findAndExecuteHandlers(router: Router, method: Method, pathname:
   });
 }
 
+const socketCollection = new WeakSet();
+
 export function findAndExecuteSubscriptions(subscriptions: RouteCollection<ISubscriptionData>, method: Method, pathname: string, queryParams: any, stream: http2.ServerHttp2Stream) {
   return new Promise((resolve) => {
     const subscriptionMatch = pathname.match(subscriptions);
@@ -54,18 +56,18 @@ export function findAndExecuteSubscriptions(subscriptions: RouteCollection<ISubs
 
     const subscriptionRoute = subscriptions[subscriptionMatch.index] as ISubscriptionData;
     if (method === Method.GET) {
-      const streamId = (stream as any).id;
-      subscriptionRoute.streams[streamId] = stream;
-      subscriptionRoute.requestData[streamId] = { queryParams };
-      stream.on('aborted', () => {
-        const { [streamId]: currentStream, ...others } = subscriptionRoute.streams as any;
-        subscriptionRoute.streams = { ...others };
-      });
+      subscriptionRoute.streams.add(stream);
+      subscriptionRoute.requestData.set(stream, { queryParams });
+      const cleanup = () => {
+        subscriptionRoute.streams.delete(stream);
+        subscriptionRoute.requestData.delete(stream);
+      };
+      stream.on('aborted', cleanup);
+      stream.on('close', cleanup);
     }
 
-    Object.keys(subscriptionRoute.streams).forEach(streamId => {
-      const subStream = subscriptionRoute.streams[+streamId];
-      const { queryParams } = subscriptionRoute.requestData[+streamId];
+    subscriptionRoute.streams.forEach(subStream => {
+      const { queryParams } = subscriptionRoute.requestData.get(subStream);
       const subscriptionsIterator: Iterator<RouteHandler> = subscriptionRoute.handlers[Symbol.iterator]();
 
       execNextHandler(subscriptionsIterator, subscriptionRoute, queryParams, subscriptionMatch, subStream, {});

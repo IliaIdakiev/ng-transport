@@ -33,7 +33,7 @@ function registerRoute(method: Method) {
 
 function registerMemoizedSubscription(path: string, ...handlers: RouteHandler[]) {
   var regExp = pathToRegexp(path);
-  subscriptionRouter.add({ path, handlers, regExp, streams: {}, requestData: {} });
+  subscriptionRouter.add({ path, handlers, regExp, streams: new Set(), requestData: new Map() });
 }
 
 let isConnected = false;
