@@ -87,14 +87,16 @@ export class FetchBackend implements HttpBackend {
 
   private jsonProcessor = (decoder, partialContent, emitter) => {
     const delimiter = '\n'.charCodeAt(0); // https://en.wikipedia.org/wiki/JSON_streaming
-    const delimiterIndex = partialContent.indexOf(delimiter);
 
-    if (delimiterIndex !== -1) {
+    while (true) {
+      const delimiterIndex = partialContent.indexOf(delimiter);
+      if (delimiterIndex === -1) { break; }
       const message = decoder.decode(partialContent.slice(0, delimiterIndex));
       partialContent = partialContent.slice(delimiterIndex + 1);
 
       emitter(partialContent, JSON.parse(message));
     }
+
     return Promise.resolve();
   }
 

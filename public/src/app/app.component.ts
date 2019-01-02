@@ -1,4 +1,4 @@
-import { Component, ViewChild, ElementRef } from '@angular/core';
+import { Component, ViewChild, ElementRef, ViewEncapsulation } from '@angular/core';
 import { Observable } from 'rxjs';
 import { FetchClient } from './fetch-client/fetch-client';
 import { tap } from 'rxjs/operators';
