@@ -47,8 +47,6 @@ export function findAndExecuteHandlers(router: Router, method: Method, pathname:
   });
 }
 
-const socketCollection = new WeakSet();
-
 export function findAndExecuteSubscriptions(subscriptions: RouteCollection<ISubscriptionData>, method: Method, pathname: string, queryParams: any, stream: http2.ServerHttp2Stream) {
   return new Promise((resolve) => {
     const subscriptionMatch = pathname.match(subscriptions);
