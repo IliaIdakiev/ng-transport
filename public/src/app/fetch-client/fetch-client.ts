@@ -4,7 +4,7 @@ import { FetchBackend } from './fetch.backend';
 
 @Injectable()
 export class FetchClient extends HttpClient {
-  constructor(fetchHandler: FetchBackend) {
-    super(fetchHandler);
+  constructor(fetchBackend: FetchBackend) {
+    super(fetchBackend);
   }
 }
