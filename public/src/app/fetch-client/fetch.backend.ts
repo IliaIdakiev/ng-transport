@@ -14,23 +14,6 @@ export class FetchBackend implements HttpBackend {
 
   constructor(@Inject(PROTO_BUFFER_URL) private protoBufsUrl: string) { }
 
-  private prepareFetchHeaders(headers: HttpHeaders) {
-    return headers.keys().reduce((acc, key) => {
-      acc[key] = headers.get(key); return acc;
-    }, {});
-  }
-
-  private prepareFetchBody(body: any) {
-    return typeof body === 'string' ? body : JSON.stringify(body);
-  }
-
-  private getResponseHeaders(response: any) {
-    return [...response.headers.entries()].reduce((acc, [key, value]) => {
-      acc[key] = value;
-      return acc;
-    }, {});
-  }
-
   handle(req: HttpRequest<any>): Observable<HttpEvent<any>> {
     const method = req.method;
     const headers = this.prepareFetchHeaders(req.headers);
@@ -55,6 +38,23 @@ export class FetchBackend implements HttpBackend {
         return observableEmpty();
       })
     );
+  }
+
+  private prepareFetchHeaders(headers: HttpHeaders) {
+    return headers.keys().reduce((acc, key) => {
+      acc[key] = headers.get(key); return acc;
+    }, {});
+  }
+
+  private prepareFetchBody(body: any) {
+    return typeof body === 'string' ? body : JSON.stringify(body);
+  }
+
+  private getResponseHeaders(response: any) {
+    return [...response.headers.entries()].reduce((acc, [key, value]) => {
+      acc[key] = value;
+      return acc;
+    }, {});
   }
 
   private getDecoder(type: string, protoFile: string, protoMessage: string) {
