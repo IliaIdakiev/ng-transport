@@ -10,7 +10,7 @@ import {
   serveStaticFile,
   findAndExecuteHandlers,
   condExec,
-  findAndExecuteSubscriptions,
+  handleSubscriptions,
   returnNotFound,
   processServerPush,
   constructServerPushCollection
@@ -66,7 +66,7 @@ export function connect(server: http2.Http2SecureServer, config?: IRouterConfig)
 
     serverStatic
       .then(condExec(findAndExecuteHandlers.bind(undefined, router, method, pathname, queryParams, stream)))
-      .then(condExec(findAndExecuteSubscriptions.bind(undefined, subscriptionRouter, method, pathname, queryParams, stream)))
+      .then(condExec(handleSubscriptions.bind(undefined, subscriptionRouter, method, pathname, queryParams, stream)))
       .then(condExec(returnNotFound.bind(undefined, methodString, pathString, stream)));
   });
 

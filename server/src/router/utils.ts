@@ -47,7 +47,7 @@ export function findAndExecuteHandlers(router: Router, method: Method, pathname:
   });
 }
 
-export function findAndExecuteSubscriptions(subscriptions: RouteCollection<ISubscriptionData>, method: Method, pathname: string, queryParams: any, stream: http2.ServerHttp2Stream) {
+export function handleSubscriptions(subscriptions: RouteCollection<ISubscriptionData>, method: Method, pathname: string, queryParams: any, stream: http2.ServerHttp2Stream) {
   return new Promise((resolve) => {
     const subscriptionMatch = pathname.match(subscriptions);
     if (!subscriptionMatch) { resolve(true); return; }
