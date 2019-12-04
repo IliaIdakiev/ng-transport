@@ -58,14 +58,14 @@ function delay(data: any, next: any) {
 
 router.post('/api/users', jsonBodyParser, function ({ stream, data }, next, notifier) {
   const { name, age } = (data as any).body;
-  setTimeout(function () {
+  // setTimeout(function () {
     users.push({ name, age });
     notifier();
     stream.respond({
       ':status': 201
     });
     stream.end();
-  }, 2000);
+  // });
 });
 
 const { sender: userSender } = protobufParser('user', 'user', 'UsersMessage');
