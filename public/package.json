@@ -32,7 +32,7 @@
     "add": "^2.0.6",
     "core-js": "^2.5.4",
     "ngrx-store-freeze": "^0.2.4",
-    "protobufjs": "^6.8.8",
+    "protobufjs": "^6.11.3",
     "rxjs": "^6.0.0",
     "yarn": "^1.10.1",
     "zone.js": "^0.8.26"
